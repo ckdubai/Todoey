@@ -38,7 +38,7 @@ class TodoListViewController: UITableViewController {
         if tableView.cellForRow(at:indexPath)?.accessoryType == .checkmark {
             tableView.cellForRow(at:indexPath)?.accessoryType = .none
         } else {
-            tableView.cellForRow(at:indexPath)?.accessoryType = .checkmark
+            tableView.cellForRow(at:indexPath)?.accessoryType  = .checkmark
         }
     }
     
