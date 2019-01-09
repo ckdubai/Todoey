@@ -8,8 +8,9 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
-class TodoListViewController: UITableViewController {
+class TodoListViewController: SwipeTableViewController {
     
     
     
@@ -17,6 +18,7 @@ class TodoListViewController: UITableViewController {
     var todoItems: Results<Item>?
     let realm = try! Realm()
     
+    @IBOutlet weak var searchBar: UISearchBar!
     var selectedCategory : Category? {
         didSet {
             loadItems()
@@ -29,6 +31,7 @@ class TodoListViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
+        tableView.separatorStyle = .none
         
         print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
        //print(dataFilePath)
@@ -39,6 +42,40 @@ class TodoListViewController: UITableViewController {
 //            itemArray = items
 //        }
     }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        title = selectedCategory?.name
+        
+       
+        guard let colourHex = selectedCategory?.color else {  fatalError()  }
+        
+        updateNavBar(withHexCode: colourHex)
+        
+        
+        
+        
+        
+            
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+       
+        updateNavBar(withHexCode: "1D9BF6")
+        //navigationController?.navigationBar.barTintColor = originalColour
+        //navigationController?.navigationBar.tintColor = FlatWhite()
+        //navigationController?.navigationBar.largeTitleTextAttributes = [NSAttributedStringKey.foregroundColor: FlatWhite()]
+    }
+    
+    //MARK: - NAV BAR SETUP METHODS
+    
+    func updateNavBar(withHexCode colourHexCode: String) {
+         guard let navBar = navigationController?.navigationBar else { fatalError("Navigation Bar does not exist.")}
+        guard let navBarColour = UIColor(hexString: colourHexCode)  else { fatalError()}
+        navBar.barTintColor = navBarColour
+        navBar.tintColor = ContrastColorOf(navBarColour, returnFlat: true)
+        navBar.largeTitleTextAttributes = [NSAttributedStringKey.foregroundColor : ContrastColorOf(navBarColour, returnFlat: true)]
+        searchBar.barTintColor = navBarColour
+    }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return todoItems?.count ?? 1
@@ -46,10 +83,18 @@ class TodoListViewController: UITableViewController {
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
+        // declare super class variable
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
+        
+       
         
         if let item = todoItems?[indexPath.row] {
             cell.textLabel?.text = item.title
+            
+            if let color = UIColor(hexString: selectedCategory!.color)?.darken(byPercentage: CGFloat(indexPath.row) / CGFloat(todoItems!.count)) {
+                cell.backgroundColor = color
+                cell.textLabel?.textColor = ContrastColorOf(color, returnFlat: true)
+            }
             cell.accessoryType = item.done ? .checkmark : .none
             
         } else {
@@ -154,6 +199,18 @@ class TodoListViewController: UITableViewController {
         todoItems = selectedCategory?.items.sorted(byKeyPath: "title", ascending: true)
         tableView.reloadData()
         
+    }
+    
+    override func updateModel(at indexpath: IndexPath) {
+        if let itemForDeletion = self.todoItems?[indexpath.row] {
+            do {
+                try self.realm.write {
+                    self.realm.delete(itemForDeletion)
+                }
+            } catch {
+                print("Error deleting category,\(error)")
+            }
+        }
     }
         
         //    let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
